@@ -1,0 +1,107 @@
+# ============================================================
+# SafeGuard-AI: Fake News & Scam Detection Agent
+# Fully Working - No Errors
+# ============================================================
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+import numpy as np
+
+# -------------------------------
+# 1. Load Dataset
+# -------------------------------
+def load_data():
+    # Make sure your dataset file is named: fake_news.csv
+    try:
+        df = pd.read_csv("fake_news.csv")
+        # dataset must have these two columns:
+        # text - the news/message
+        # label - 0 (real), 1 (fake)
+        df = df[["text", "label"]]
+        df.dropna(inplace=True)
+    except FileNotFoundError:
+        print("Warning: 'fake_news.csv' not found. Using sample data for demonstration.")
+        data = {
+            "text": [
+                "Global markets show signs of recovery after a volatile week.",
+                "You've won a $1,000,000 lottery! Click here to claim your prize now!",
+                "New study reveals benefits of a balanced diet for long-term health.",
+                "URGENT: Your account has been compromised. Verify your details immediately.",
+                "The local government announced plans for a new public park.",
+            ],
+            "label": [0, 1, 0, 1, 0],  # 0 for real, 1 for fake
+        }
+        df = pd.DataFrame(data)
+    
+    return df
+
+
+# -------------------------------
+# 2. Train Model
+# -------------------------------
+def train_model(df):
+    X = df["text"]
+    y = df["label"]
+
+    vectorizer = TfidfVectorizer(stop_words="english", max_features=5000)
+    X_vec = vectorizer.fit_transform(X)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_vec, y, test_size=0.2, random_state=42
+    )
+
+    model = LogisticRegression(max_iter=200)
+    model.fit(X_train, y_train)
+
+    preds = model.predict(X_test)
+    acc = accuracy_score(y_test, preds)
+
+    print(f"Model Accuracy: {acc*100:.2f}%")
+
+    return model, vectorizer
+
+
+# -------------------------------
+# 3. AI Agent Function
+# -------------------------------
+def safeguard_agent(model, vectorizer, text):
+    text_vec = vectorizer.transform([text])
+    
+    prob_fake = model.predict_proba(text_vec)[0][1] * 100
+    prediction = model.predict(text_vec)[0]
+
+    if prediction == 1:
+        verdict = "FAKE / SCAM"
+        reason = "Message contains patterns similar to fake news or scam content."
+    else:
+        verdict = "REAL / SAFE"
+        reason = "No red flags detected. Content looks normal."
+
+    return {
+        "input": text,
+        "verdict": verdict,
+        "risk_score": round(prob_fake, 2),
+        "reason": reason
+    }
+
+
+# -------------------------------
+# 4. Run Agent Demo
+# -------------------------------
+if __name__ == "__main__":
+
+    df = load_data()
+    model, vectorizer = train_model(df)
+
+    print("\n--- SafeGuard AI Agent Ready ---\n")
+    
+    test_msg = "You won 10 crore lottery! Click here to claim now."
+    result = safeguard_agent(model, vectorizer, test_msg)
+
+    print("Input Text:", result["input"])
+    print("Verdict:", result["verdict"])
+    print("Risk Score:", result["risk_score"])
+    print("Reason:", result["reason"])
